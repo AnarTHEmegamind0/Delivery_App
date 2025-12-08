@@ -90,7 +90,6 @@ class _DeliveryHomePageState extends State<DeliveryHomePage>
               child: TabBar(
                 controller: _tabController,
                 labelColor: AppTheme.primaryColor,
-                unselectedLabelColor: AppTheme.textSecondary,
                 indicatorColor: AppTheme.primaryColor,
                 indicatorWeight: 3,
                 tabs: const [

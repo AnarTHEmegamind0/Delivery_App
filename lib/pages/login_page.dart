@@ -3,6 +3,10 @@ import '../core/app_theme.dart';
 import '../core/constants.dart';
 import '../core/main_navigation.dart';
 import '../core/utils.dart';
+import '../core/design_system/components/app_button.dart';
+import '../core/design_system/components/app_input.dart';
+import '../core/design_system/tokens/colors.dart';
+import '../core/design_system/tokens/typography.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      // Background color is handled by Theme (AppTheme.darkTheme/lightTheme)
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingL),
@@ -56,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
               Text(
                 AppConstants.appName,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                 textAlign: TextAlign.center,
@@ -64,22 +67,24 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: AppTheme.spacingS),
               
               // Driver Label
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingL,
-                  vertical: AppTheme.spacingS,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.successColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusL),
-                ),
-                child: Text(
-                  AppConstants.driverApp,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                  textAlign: TextAlign.center,
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingL,
+                    vertical: AppTheme.spacingS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                    border: Border.all(color: AppColors.primaryGreen),
+                  ),
+                  child: Text(
+                    AppConstants.driverApp,
+                    style: AppTypography.button.copyWith(
+                      color: AppColors.primaryGreen,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               
@@ -92,40 +97,11 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Phone Number Field
-                    TextFormField(
+                    AppInput(
                       controller: _phoneController,
+                      hintText: AppConstants.phoneNumberHint,
                       keyboardType: TextInputType.phone,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: AppConstants.phoneNumberHint,
-                        hintStyle: TextStyle(color: Colors.grey.shade600),
-                        prefixText: '+976  ',
-                        prefixStyle: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade900,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          borderSide: const BorderSide(
-                            color: AppTheme.successColor,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
-                          vertical: AppTheme.spacingL,
-                        ),
-                      ),
+                      prefixText: '+976  ',
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Утасны дугаараа оруулна уу';
@@ -136,66 +112,33 @@ class _LoginPageState extends State<LoginPage> {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: AppTheme.spacingL),
                     
                     // Send Code Button
-                    Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.successColor.withOpacity(0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleSendCode,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              )
-                            : Text(
-                                AppConstants.sendCode,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                      ),
+                    AppButton(
+                      label: AppConstants.sendCode,
+                      onPressed: _handleSendCode,
+                      isLoading: _isLoading,
+                      variant: AppButtonVariant.primary,
+                      size: AppButtonSize.large,
                     ),
+                    
                     const SizedBox(height: AppTheme.spacingM),
                     
                     // Helper Text
                     Text(
                       AppConstants.enterCode,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                      style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-              
-              const Spacer(),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
     );
   }
 }

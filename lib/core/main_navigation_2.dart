@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../features/delivery/providers/theme_provider.dart';
-
 import '../features/customer/pages/customer_orders_page.dart';
 import '../features/customer/pages/customer_profile_page.dart';
 import 'app_theme.dart';
+import 'design_system/tokens/colors.dart';
+import 'design_system/tokens/typography.dart';
 
 class MainNavigation2 extends StatefulWidget {
   const MainNavigation2({super.key});
@@ -24,14 +22,16 @@ class _MainNavigation2State extends State<MainNavigation2> {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure dark theme is on by default or follows system as per original design
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -44,20 +44,17 @@ class _MainNavigation2State extends State<MainNavigation2> {
               _currentIndex = index;
             });
           },
-          backgroundColor: const Color(0xFF1E1E1E),
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.transparent, // Handled by container
+          elevation: 0,
+          selectedItemColor: AppColors.primaryGreen,
+          unselectedItemColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
           type: BottomNavigationBarType.fixed,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          selectedLabelStyle: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          selectedLabelStyle: AppTypography.caption.copyWith(
+             fontWeight: FontWeight.w600,
           ),
-          unselectedLabelStyle: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
+          unselectedLabelStyle: AppTypography.caption,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.receipt_long_outlined),

@@ -1,3 +1,4 @@
+import 'package:delivery/core/main_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/app_theme.dart';
@@ -41,7 +42,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: const MainNavigation2(), // Switched to Customer App
+          home: const MainNavigation(), // Switched to Customer App
           debugShowCheckedModeBanner: false,
         );
       },
