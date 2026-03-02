@@ -16,6 +16,10 @@ class OrderModel {
   final String? customerName;
   final String? customerPhone;
   final String? notes;
+  final String? restaurantName;
+  final String? restaurantImageUrl;
+  final String? itemsSummary;
+  final int? itemCount;
 
   OrderModel({
     required this.id,
@@ -27,6 +31,10 @@ class OrderModel {
     this.customerName,
     this.customerPhone,
     this.notes,
+    this.restaurantName,
+    this.restaurantImageUrl,
+    this.itemsSummary,
+    this.itemCount,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +51,10 @@ class OrderModel {
       customerName: json['customerName'] as String?,
       customerPhone: json['customerPhone'] as String?,
       notes: json['notes'] as String?,
+      restaurantName: json['restaurantName'] as String?,
+      restaurantImageUrl: json['restaurantImageUrl'] as String?,
+      itemsSummary: json['itemsSummary'] as String?,
+      itemCount: json['itemCount'] as int?,
     );
   }
 
@@ -57,6 +69,10 @@ class OrderModel {
       'customerName': customerName,
       'customerPhone': customerPhone,
       'notes': notes,
+      'restaurantName': restaurantName,
+      'restaurantImageUrl': restaurantImageUrl,
+      'itemsSummary': itemsSummary,
+      'itemCount': itemCount,
     };
   }
 
@@ -70,6 +86,10 @@ class OrderModel {
     String? customerName,
     String? customerPhone,
     String? notes,
+    String? restaurantName,
+    String? restaurantImageUrl,
+    String? itemsSummary,
+    int? itemCount,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -81,6 +101,10 @@ class OrderModel {
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       notes: notes ?? this.notes,
+      restaurantName: restaurantName ?? this.restaurantName,
+      restaurantImageUrl: restaurantImageUrl ?? this.restaurantImageUrl,
+      itemsSummary: itemsSummary ?? this.itemsSummary,
+      itemCount: itemCount ?? this.itemCount,
     );
   }
 }

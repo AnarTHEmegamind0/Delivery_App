@@ -65,6 +65,16 @@ dependencies:
   # URL Launcher for phone calls
   url_launcher: ^6.2.2
 
+  # Design Excellence
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+
+  # Image Processing
+  image_picker: ^1.0.7
+
+  # Charts for Earnings
+  fl_chart: ^0.66.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

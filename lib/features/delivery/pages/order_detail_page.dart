@@ -1,11 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/app_theme.dart';
-import '../../../core/utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/design_system/design_system.dart';
 import '../models/order_model.dart';
 import 'order_map_navigation_page.dart';
 
-class OrderDetailPage extends StatelessWidget {
+class OrderDetailPage extends StatefulWidget {
   final OrderModel order;
 
   const OrderDetailPage({
@@ -13,65 +15,401 @@ class OrderDetailPage extends StatelessWidget {
     required this.order,
   });
 
+  @override
+  State<OrderDetailPage> createState() => _OrderDetailPageState();
+}
+
+class _OrderDetailPageState extends State<OrderDetailPage> {
+  final ScrollController _scrollController = ScrollController();
+  double _scrollOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    setState(() {
+      _scrollOffset = _scrollController.offset;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    HapticFeedback.lightImpact();
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     }
   }
 
-  void _showIssueDialog(BuildContext context) {
+  void _showIssueSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF2C2C2C),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+      builder: (context) => GlassBottomSheet(
+        child: Padding(
+          padding: AppSpacing.sheetInset,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ямар асуудал гарсан бэ?',
+                    style: AppTypography.h2.copyWith(
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.lightTextSecondary,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ...[
+                ('Хариуцагч байхгүй', Icons.person_off_outlined),
+                ('Хаяг буруу', Icons.wrong_location_outlined),
+                ('Бараа гэмтсэн', Icons.broken_image_outlined),
+                ('Төлбөр төлөхгүй байна', Icons.money_off_outlined),
+                ('Бусад', Icons.more_horiz_rounded),
+              ].map((issue) => _buildIssueOption(
+                    context,
+                    issue.$1,
+                    issue.$2,
+                    isDark,
+                  )),
+              const SizedBox(height: AppSpacing.xl),
+            ],
           ),
         ),
-        padding: const EdgeInsets.all(24),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Ямар асуудал гарсан бэ?',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                          ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+      ),
+    );
+  }
+
+  Widget _buildIssueOption(
+    BuildContext context,
+    String title,
+    IconData icon,
+    bool isDark,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: AppSpacing.borderRadiusLg,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Мэдэгдэл илгээгдлээ: $title'),
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppSpacing.borderRadiusMd,
                 ),
-                const SizedBox(height: 16),
-                _buildIssueOption(context, 'Хариуцагч байхгүй'),
-                _buildIssueOption(context, 'Хаяг буруу'),
-                _buildIssueOption(context, 'Бараа гэмтсэн'),
-                _buildIssueOption(context, 'Төлбөр төлөхгүй байна'),
-                _buildIssueOption(context, 'Бусад'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Мэдэгдэх',
-                      style: TextStyle(color: Colors.grey),
+              ),
+            );
+          },
+          borderRadius: AppSpacing.borderRadiusLg,
+          child: Padding(
+            padding: AppSpacing.cardInset,
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.1),
+                    borderRadius: AppSpacing.borderRadiusMd,
+                  ),
+                  child: Icon(icon, color: AppColors.error, size: 20),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.lightTextPrimary,
                     ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: isDark
+                      ? AppColors.darkTextTertiary
+                      : AppColors.lightTextTertiary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasImage = widget.order.restaurantImageUrl != null;
+    final headerHeight = hasImage ? 280.0 : 0.0;
+
+    // Mock order items
+    final orderItems = widget.order.itemsSummary?.split(', ') ?? [
+      'Burger King - Whopper Combo',
+      'Coca Cola 500ml x2',
+      'Картофны шаарсан',
+    ];
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      body: Stack(
+        children: [
+          // Main scrollable content
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // Hero image header with parallax
+              if (hasImage) _buildHeroHeader(isDark, headerHeight),
+
+              // Content
+              SliverToBoxAdapter(
+                child: Transform.translate(
+                  offset: Offset(0, hasImage ? -24 : 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkBackground
+                          : AppColors.lightBackground,
+                      borderRadius: hasImage
+                          ? AppSpacing.borderRadiusTopXl
+                          : BorderRadius.zero,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Drag handle
+                        if (hasImage)
+                          Center(
+                            child: Container(
+                              margin: const EdgeInsets.only(top: AppSpacing.sm),
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.darkTextTertiary
+                                    : AppColors.lightTextTertiary,
+                                borderRadius: AppSpacing.borderRadiusFull,
+                              ),
+                            ),
+                          ),
+
+                        Padding(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Restaurant name and status
+                              _buildRestaurantHeader(isDark),
+                              const SizedBox(height: AppSpacing.xl),
+
+                              // Customer Info Card
+                              _buildCustomerCard(isDark),
+                              const SizedBox(height: AppSpacing.md),
+
+                              // Delivery Address Card
+                              _buildAddressCard(isDark),
+                              const SizedBox(height: AppSpacing.md),
+
+                              // Order Items Card
+                              _buildOrderItemsCard(isDark, orderItems),
+                              const SizedBox(height: AppSpacing.md),
+
+                              // Notes Card
+                              if (widget.order.notes != null)
+                                _buildNotesCard(isDark),
+                              const SizedBox(height: AppSpacing.xxl),
+
+                              // Action buttons
+                              _buildActionButtons(isDark),
+                              const SizedBox(height: AppSpacing.xxxl),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Floating back button and actions
+          _buildFloatingHeader(isDark, hasImage),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroHeader(bool isDark, double height) {
+    final parallaxOffset = _scrollOffset * 0.5;
+
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Parallax image
+            Transform.translate(
+              offset: Offset(0, parallaxOffset),
+              child: Hero(
+                tag: 'order_image_${widget.order.id}',
+                child: CachedNetworkImage(
+                  imageUrl: widget.order.restaurantImageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: isDark ? AppColors.darkCard : AppColors.lightBorder,
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: isDark ? AppColors.darkCard : AppColors.lightBorder,
+                    child: const Icon(
+                      Icons.restaurant_outlined,
+                      size: 64,
+                      color: AppColors.darkTextTertiary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Gradient overlay
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      (isDark ? AppColors.darkBackground : AppColors.lightBackground)
+                          .withOpacity(0.3),
+                      isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                    ],
+                    stops: const [0.0, 0.6, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingHeader(bool isDark, bool hasImage) {
+    final opacity = hasImage
+        ? (1 - (_scrollOffset / 100).clamp(0.0, 1.0))
+        : 0.0;
+
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: AnimatedContainer(
+        duration: AppAnimations.fast,
+        decoration: BoxDecoration(
+          color: (_scrollOffset > 150 || !hasImage)
+              ? (isDark ? AppColors.darkBackground : AppColors.lightBackground)
+              : Colors.transparent,
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                // Back button
+                GlassContainer(
+                  padding: EdgeInsets.zero,
+                  borderRadius: AppSpacing.borderRadiusFull,
+                  blur: hasImage && opacity > 0.5 ? 12 : 0,
+                  shadow: false,
+                  border: false,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_rounded,
+                      color: hasImage && opacity > 0.5
+                          ? Colors.white
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.lightTextPrimary),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const Spacer(),
+
+                // Title (appears on scroll)
+                if (_scrollOffset > 150 || !hasImage)
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      widget.order.restaurantName ?? 'Захиалга',
+                      style: AppTypography.h4.copyWith(
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                else
+                  const Spacer(flex: 3),
+
+                const Spacer(),
+
+                // Issue button
+                GlassContainer(
+                  padding: EdgeInsets.zero,
+                  borderRadius: AppSpacing.borderRadiusFull,
+                  blur: hasImage && opacity > 0.5 ? 12 : 0,
+                  shadow: false,
+                  border: false,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.error,
+                    ),
+                    onPressed: () => _showIssueSheet(context),
                   ),
                 ),
               ],
@@ -82,303 +420,414 @@ class OrderDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildIssueOption(BuildContext context, String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: const Color(0xFF3C3C3C),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Мэдэгдэл илгээгдлээ: $title')),
-            );
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white,
+  Widget _buildRestaurantHeader(bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.order.restaurantName ?? 'Рестаран',
+                style: AppTypography.h1.copyWith(
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.lightTextPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  StatusChip(
+                    label: widget.order.status == OrderStatus.inProgress
+                        ? 'Хүргэж байна'
+                        : 'Дууссан',
+                    type: widget.order.status == OrderStatus.inProgress
+                        ? StatusType.info
+                        : StatusType.success,
                   ),
-            ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(
+                    Icons.schedule_outlined,
+                    size: 16,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    widget.order.time,
+                    style: AppTypography.label.copyWith(
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
+        // Price
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'Орлого',
+              style: AppTypography.caption.copyWith(
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.lightTextSecondary,
+              ),
+            ),
+            MetricCounter(
+              value: widget.order.price,
+              prefix: '₮',
+              style: AppTypography.h2.copyWith(
+                color: isDark
+                    ? AppColors.primaryGreen
+                    : AppColors.primaryGreenLight,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerCard(bool isDark) {
+    return Container(
+      padding: AppSpacing.cardInset,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: AppSpacing.borderRadiusXl,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: AppSpacing.borderRadiusLg,
+            ),
+            child: Center(
+              child: Text(
+                (widget.order.customerName ?? 'U')[0].toUpperCase(),
+                style: AppTypography.h2.copyWith(color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Хэрэглэгч',
+                  style: AppTypography.caption.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  widget.order.customerName ?? 'Хэрэглэгч',
+                  style: AppTypography.h3.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
+                Text(
+                  widget.order.customerPhone ?? '',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Call button
+          AnimatedButton(
+            label: '',
+            onPressed: () => _makePhoneCall(widget.order.customerPhone ?? ''),
+            variant: AnimatedButtonVariant.primary,
+            size: AnimatedButtonSize.medium,
+            icon: Icons.phone_rounded,
+          ),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Mock order items
-    final orderItems = [
-      'Burger King - Whopper Combo',
-      'Coca Cola 500ml x2',
-      'Картофны шаарсан',
-    ];
-
-    final notes = 'Лифт ажиллахгүй байна, шатаар өгнө үү. Утсаар холбогдоно уу.';
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Захиалгын дэлгэрэнгүй'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.error_outline, color: AppTheme.errorColor),
-            onPressed: () => _showIssueDialog(context),
+  Widget _buildAddressCard(bool isDark) {
+    return Container(
+      padding: AppSpacing.cardInset,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: AppSpacing.borderRadiusXl,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withOpacity(0.15),
+                  borderRadius: AppSpacing.borderRadiusMd,
+                ),
+                child: const Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Хүргэх хаяг',
+                style: AppTypography.label.copyWith(
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${widget.order.distanceInKm.toStringAsFixed(1)} км',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.primaryGreen,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            widget.order.address,
+            style: AppTypography.body.copyWith(
+              color: isDark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.lightTextPrimary,
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Customer Info Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Хэрэглэгч',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          order.customerName ?? 'Б. Батсайхан',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          order.customerPhone ?? '+976 9911 1234',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.successColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.phone, color: Colors.white),
-                      onPressed: () => _makePhoneCall(order.customerPhone ?? ''),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+    );
+  }
 
-            // Delivery Address Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: AppTheme.successColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Хүргэх хаяг',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey,
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    order.address,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Order Items Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Захиалсан бараа',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...orderItems.map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.only(top: 8, right: 12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.successColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                item,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Notes Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Тэмдэглэл',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    notes,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Map Button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: Container(
+  Widget _buildOrderItemsCard(bool isDark, List<String> items) {
+    return Container(
+      padding: AppSpacing.cardInset,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: AppSpacing.borderRadiusXl,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.successColor.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
+                  color: AppColors.accentGold.withOpacity(0.15),
+                  borderRadius: AppSpacing.borderRadiusMd,
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: AppColors.accentGold,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Захиалсан бараа',
+                style: AppTypography.label.copyWith(
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.lightBorderSubtle,
+                  borderRadius: AppSpacing.borderRadiusFull,
+                ),
+                child: Text(
+                  '${items.length} бараа',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ...items.asMap().entries.map((entry) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: entry.key < items.length - 1 ? AppSpacing.sm : 0,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen,
+                        borderRadius: AppSpacing.borderRadiusFull,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: AppTypography.body.copyWith(
+                          color: isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.lightTextPrimary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OrderMapNavigationPage(order: order),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.map, color: Colors.white),
-                  label: Text(
-                    'Газрын зураг харах',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Complete Button (disabled state)
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: OutlinedButton(
-                onPressed: null,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.grey),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  'Хүргэлт амжилттай – Дуусгах',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Газрын зураг дээр хаягт очсоны дараа дуусгана уу',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+              )),
+        ],
       ),
+    );
+  }
+
+  Widget _buildNotesCard(bool isDark) {
+    return Container(
+      padding: AppSpacing.cardInset,
+      decoration: BoxDecoration(
+        color: AppColors.warning.withOpacity(0.1),
+        borderRadius: AppSpacing.borderRadiusXl,
+        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.warning,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'Тэмдэглэл',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            widget.order.notes!,
+            style: AppTypography.body.copyWith(
+              color: isDark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.lightTextPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(bool isDark) {
+    return Column(
+      children: [
+        // Navigate button
+        AnimatedButton(
+          label: 'Газрын зураг харах',
+          onPressed: () {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    OrderMapNavigationPage(order: widget.order),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.1),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: animation,
+                        curve: AppAnimations.pinterestEaseOut,
+                      )),
+                      child: child,
+                    ),
+                  );
+                },
+                transitionDuration: AppAnimations.medium,
+              ),
+            );
+          },
+          icon: Icons.map_outlined,
+          fullWidth: true,
+          size: AnimatedButtonSize.large,
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // Complete button
+        AnimatedButton(
+          label: 'Хүргэлт амжилттай – Дуусгах',
+          onPressed: widget.order.status == OrderStatus.inProgress
+              ? null
+              : null, // Would navigate to completion flow
+          variant: AnimatedButtonVariant.secondary,
+          disabled: true,
+          icon: Icons.check_circle_outline,
+          fullWidth: true,
+          size: AnimatedButtonSize.large,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        Text(
+          'Газрын зураг дээр хаягт очсоны дараа дуусгана уу',
+          style: AppTypography.caption.copyWith(
+            color: isDark
+                ? AppColors.darkTextTertiary
+                : AppColors.lightTextTertiary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
